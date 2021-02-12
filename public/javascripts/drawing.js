@@ -195,6 +195,8 @@ function drawMap(polylines,duration) {
 }
 
 function getStravaActivities() {
+	var $activities = $('#activities');
+	$activities.html('Loading Strava activities...');
 	// requests the last N (TODO: look up how many) activities from Strava
 	$.ajax({
 		type: "GET",
@@ -203,9 +205,8 @@ function getStravaActivities() {
 			xhr.setRequestHeader ("Authorization", "Bearer " + Cookies.get('strava_access_token'));
 		},
 		success: function(data) {
-			console.log(data);
-			
-			var $activities = $('activities');
+			//console.log(data);
+			$activities.html('');
 			var activityDate, decodedPolyline;
 			for (var i = 0; i < data.length; i++) {
 				// only include runs
