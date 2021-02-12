@@ -2,11 +2,29 @@
 <html>
 <head>
 	<%- include ("../partials/header.ejs") %>
+	<script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
+	<script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
+	<link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
+	<script src='/javascripts/polyline.js'></script>
+	<script>
+		var STRAVA_REDIRECT = '<%= process.env.STRAVA_REDIRECT %>';
+	</script>
 </head>
 
 <body>
+	<script src='javascripts/drawing.js'></script>
+	<div id="activities"></div>
+	Order:
+	<select name="order" id="order">
+		<option value="forward">Forward in time</option>
+		<option value="backward">Backward in time</option>
+	</select>
+	Duration:
+	<input type="text" id="duration" value="3">	
+	<input type="button" value="Generate Map" id="button_generate_map">
 
-	Welcome.
+	<div id="video_link"></div>
 
+	<div id='map' style='width: 540px; height: 760px;'></div>
 </body>
 </html>
