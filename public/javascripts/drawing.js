@@ -32,6 +32,7 @@ function drawMap(polylines,duration) {
 	};
 	console.log(totalPoints,decodedPolylines);
 
+	$('#map').show();
 	mapboxgl.accessToken = 'pk.eyJ1Ijoia2NhcnRlcjgwIiwiYSI6ImNqb3lna3l4aTJqZHozcHBkb2t6aTlqMXcifQ.ejZI1oT4qSCXozOmgHLYsg';
 	map = new mapboxgl.Map({
 		container: 'map',
@@ -63,14 +64,14 @@ function drawMap(polylines,duration) {
 				type: "video/webm"
 			});
 			const url = URL.createObjectURL(blob);
-			d.innerHTML += `<a href="${url}" download="run_video.webm">Download Video</a>`;
+			d.innerHTML = `<a href="${url}" download="run_video.webm">Download Video</a>`;
 			
 			// https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
 			$.ajax({
 				type: "POST",
 				url: 'https://api.cloudconvert.com/v2/import/upload',
 				headers: {
-					'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiM2Y5MmFiYTI5NGU5Mzk0ZGQ1OGM0M2Y3NTU0MzI5MDY1NGFjYThhZWRhODk2MmNlOGJlYjE1NDQ5ODcyZDM5YmVhY2U5YTVlY2UwMDE2Y2IiLCJpYXQiOiIxNjEyNzYzODc1Ljg5ODg4NyIsIm5iZiI6IjE2MTI3NjM4NzUuODk4ODkxIiwiZXhwIjoiNDc2ODQzNzQ3NS44NTQzODMiLCJzdWIiOiI0ODY4NTQ2OCIsInNjb3BlcyI6WyJ0YXNrLnJlYWQiLCJ0YXNrLndyaXRlIl19.gGQgg-yWyIJGQ5krMqCVQzsossLTRFmjY0fQPUiiUbNADxRnZG2Qo1PvD5ZNYhHOukR_InYlp7QtFyQealAHU4ZAXKyhz9Cec7IBTU4DF7WQmeVEApTIHDAD5-fgad6d2_ak3fpR7eGYU_4cvfrVRug2Nh2Xz6e4NABHGvOtKwecWc20Ko58GrZ6WDVqOliSt48RDzeUNtLnP_cDUWc89nP8JoQ2AqUVHCr2dEAKIcN4937pz-RmLdXRt-njQQnlcgVK8e3lrQVy3w9Za3OeJ_yDQ-ySIX-sR1_--rtubvUQwMOr3gzo0Xk6H_ra6OKV7bSKObQlXOe9evIBWxjAvmYkCRwiOamWe-697qLl7FWphMX-Nrvg2HM2tZ6fYcQ02sPJM010-aIcY8WVTHQ6L7gg7AyWZujhtrOXAtZvAmMkCbTCw3zE5iskDhfuhhRv9f-w8BKDdHuOsTq3d0r0qjm7P_R13bMjoyUKjEdrYPN5hYR1FNuuBQwmXyr4U8eU8-kHo2U3-YJPdC_0vXm7iaY7uJvwp_uDVhc59w99SrkOu9uSBkju0jFifZVbfsWDs70cps81UFbF6imOMJpROIkcrBc6IMPnuiP7Mis88RzizqdbWy8DNToxPzJ86NCR0FPH3ruU6rB8a82JDV-Ib-RT8HVvPzo_saKqbvK7Nxo',
+					'Authorization': 'Bearer ' + CLOUDCONVERT_PERSONAL_ACCESS_TOKEN,
 					'Content-type': 'application/json'
 				},
 				success: function( data, textStatus, jqXHR ) {
@@ -86,7 +87,7 @@ function drawMap(polylines,duration) {
 						type: "POST",
 						url: data.data.result.form.url,
 						headers: {
-							'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiM2Y5MmFiYTI5NGU5Mzk0ZGQ1OGM0M2Y3NTU0MzI5MDY1NGFjYThhZWRhODk2MmNlOGJlYjE1NDQ5ODcyZDM5YmVhY2U5YTVlY2UwMDE2Y2IiLCJpYXQiOiIxNjEyNzYzODc1Ljg5ODg4NyIsIm5iZiI6IjE2MTI3NjM4NzUuODk4ODkxIiwiZXhwIjoiNDc2ODQzNzQ3NS44NTQzODMiLCJzdWIiOiI0ODY4NTQ2OCIsInNjb3BlcyI6WyJ0YXNrLnJlYWQiLCJ0YXNrLndyaXRlIl19.gGQgg-yWyIJGQ5krMqCVQzsossLTRFmjY0fQPUiiUbNADxRnZG2Qo1PvD5ZNYhHOukR_InYlp7QtFyQealAHU4ZAXKyhz9Cec7IBTU4DF7WQmeVEApTIHDAD5-fgad6d2_ak3fpR7eGYU_4cvfrVRug2Nh2Xz6e4NABHGvOtKwecWc20Ko58GrZ6WDVqOliSt48RDzeUNtLnP_cDUWc89nP8JoQ2AqUVHCr2dEAKIcN4937pz-RmLdXRt-njQQnlcgVK8e3lrQVy3w9Za3OeJ_yDQ-ySIX-sR1_--rtubvUQwMOr3gzo0Xk6H_ra6OKV7bSKObQlXOe9evIBWxjAvmYkCRwiOamWe-697qLl7FWphMX-Nrvg2HM2tZ6fYcQ02sPJM010-aIcY8WVTHQ6L7gg7AyWZujhtrOXAtZvAmMkCbTCw3zE5iskDhfuhhRv9f-w8BKDdHuOsTq3d0r0qjm7P_R13bMjoyUKjEdrYPN5hYR1FNuuBQwmXyr4U8eU8-kHo2U3-YJPdC_0vXm7iaY7uJvwp_uDVhc59w99SrkOu9uSBkju0jFifZVbfsWDs70cps81UFbF6imOMJpROIkcrBc6IMPnuiP7Mis88RzizqdbWy8DNToxPzJ86NCR0FPH3ruU6rB8a82JDV-Ib-RT8HVvPzo_saKqbvK7Nxo',
+							'Authorization': 'Bearer ' + CLOUDCONVERT_PERSONAL_ACCESS_TOKEN,
 							'Content-type': 'application/json'
 						},
 						data: fd,

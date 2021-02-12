@@ -8,12 +8,13 @@
 	<script src='/javascripts/polyline.js'></script>
 	<script>
 		var STRAVA_REDIRECT = '<%= process.env.STRAVA_REDIRECT %>';
+		var CLOUDCONVERT_PERSONAL_ACCESS_TOKEN = '<%= process.env.CLOUDCONVERT_PERSONAL_ACCESS_TOKEN %>';
 	</script>
 </head>
 
 <body>
-	<script src='javascripts/drawing.js'></script>
-	<div id="activities"></div>
+	<script src="javascripts/drawing.js"></script>
+	<div id="map" style="width: 540px; height: 760px; display:none;"></div>
 	Order:
 	<select name="order" id="order">
 		<option value="forward">Forward in time</option>
@@ -22,9 +23,7 @@
 	Duration:
 	<input type="text" id="duration" value="3">	
 	<input type="button" value="Generate Map" id="button_generate_map">
-
-	<div id="video_link"></div>
-
-	<div id='map' style='width: 540px; height: 760px;'></div>
+	<div id="video_link"></div>	
+	<div id="activities"></div>
 </body>
 </html>
