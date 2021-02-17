@@ -14,16 +14,25 @@
 
 <body>
 	<script src="javascripts/drawing.js"></script>
-	<div id="map" style="width: 540px; height: 760px; display:none;"></div>
-	Order:
-	<select name="order" id="order">
-		<option value="forward">Forward in time</option>
-		<option value="backward">Backward in time</option>
-	</select>
-	Duration:
+
+	<div class="grid-container">
+		<div id="status" class="frame">
+		</div>
+		<div id="activities" class="frame">
+		</div>
+	</div>
+
+	<div id="map"></div>
+	<span id="run_display_order">
+		Run display order:
+		<select name="order" id="order">
+			<option value="forward">Forward in time</option>
+			<option value="backward">Backward in time</option>
+		</select>
+	</span>
+	Movie duration:
 	<input type="text" id="duration" value="3">	
-	<input type="button" value="Generate Map" id="button_generate_map">
-	<div id="video_link"></div>	
-	<div id="activities"></div>
+	<input type="button" value="Show Video" id="button_show_video" disabled>
+	<div id="video_link"></div>
 </body>
 </html>

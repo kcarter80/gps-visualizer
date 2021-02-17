@@ -65,38 +65,43 @@ function drawMap(polylines,duration) {
 			});
 			const url = URL.createObjectURL(blob);
 			d.innerHTML = `<a href="${url}" download="run_video.webm">Download Video</a>`;
-			
-			// https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
+
 			$.ajax({
-				type: "POST",
-				url: 'https://api.cloudconvert.com/v2/import/upload',
-				headers: {
-					'Authorization': 'Bearer ' + CLOUDCONVERT_PERSONAL_ACCESS_TOKEN,
-					'Content-type': 'application/json'
-				},
+				type: "GET",
+				url: '/create_upload_task',
 				success: function( data, textStatus, jqXHR ) {
-					console.log(data, textStatus, jqXHR);
-					var fd = new FormData();
-					fd.append('expires',data.data.result.form.parameters.expires);
-					fd.append('max_file_count',data.data.result.form.parameters.max_file_count);
-					fd.append('max_file_size',data.data.result.form.parameters.max_file_size);
-					fd.append('signature',data.data.result.form.parameters.signature);
-					fd.append('fname', 'vid.webm');
-					fd.append('data', blob);
+					console.log('Upload task created', data, textStatus, jqXHR);
+					
+					var fd = new FormData();					
+					for (const [key, value] of Object.entries(data.data.result.form.parameters)) {
+						fd.append(key,value);
+					}
+					// https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
+					// fd.append('fname', 'vid.webm');
+					fd.append('file', blob);
 					$.ajax({
 						type: "POST",
 						url: data.data.result.form.url,
-						headers: {
-							'Authorization': 'Bearer ' + CLOUDCONVERT_PERSONAL_ACCESS_TOKEN,
-							'Content-type': 'application/json'
-						},
 						data: fd,
+						// the following 2 attributes are needed to get the blob upload to work
 						processData: false,
 						contentType: false,
 						success: function( data, textStatus, jqXHR ) {
-							console.log(data, textStatus, jqXHR);
+							console.log('Blob uploaded', data, textStatus, jqXHR);
+							$.ajax({
+								type: "POST",
+								url: '/create_convert_and_export_job',
+								data: {
+									upload_task_id: data.getElementsByTagName('Key')[0].innerHTML.slice(0,-5),
+									input_format: 'webm',
+									output_format: 'mp4'
+								},
+								success: function( data, textStatus, jqXHR ) {
+									console.log('File conversion begun', data, textStatus, jqXHR);
+								}
+							});
 						}
-					});
+					})
 				}
 			});
 		};
@@ -196,17 +201,17 @@ function drawMap(polylines,duration) {
 
 function getStravaActivities() {
 	var $activities = $('#activities');
-	$activities.html('Loading Strava activities...');
+	var $status = $('#status');
+	$status.append('<div id="status_loading_strava_activities">Loading Strava activities.</div>');
 	// requests the last N (TODO: look up how many) activities from Strava
 	$.ajax({
 		type: "GET",
-		url: "https://www.strava.com/api/v3/activities?per_page=20",
+		url: "https://www.strava.com/api/v3/activities?per_page=30",
 		beforeSend: function (xhr) {
 			xhr.setRequestHeader ("Authorization", "Bearer " + Cookies.get('strava_access_token'));
 		},
 		success: function(data) {
-			//console.log(data);
-			$activities.html('');
+			$('#status_loading_strava_activities').append(' DONE.');
 			var activityDate, decodedPolyline;
 			for (var i = 0; i < data.length; i++) {
 				// only include runs
@@ -215,7 +220,7 @@ function getStravaActivities() {
 					activityDate = new Date(data[i].start_date)
 					$('#activities').append(`
 						<div>
-							<input type="checkbox" id="activity_${data[i].id}" name="selectedActivities" value="${data[i].id}" data-summary-polyline="${data[i].map.summary_polyline}">
+							<input type="checkbox" id="activity_${data[i].id}" name="selected_activities" value="${data[i].id}" data-summary-polyline="${data[i].map.summary_polyline}">
 							<label for="activity_${data[i].id}">
 								${activityDate.toDateString()}
 								${activityDate.toTimeString()}
@@ -231,16 +236,31 @@ function getStravaActivities() {
 }
 
 $( document ).ready(function() {
-	$( "#button_generate_map" ).click(function() {
-		var $selectedActivities = $("input[type='checkbox'][name='selectedActivities']:checked");
+	$( "#button_show_video" ).click(function() {
+		var $selected_activities = $("input[type='checkbox'][name='selected_activities']:checked");
 		var polylines = [];
-		for (var i = 0; i < $selectedActivities.length; i++) {
-			polylines.push($selectedActivities[i].dataset.summaryPolyline);
+		for (var i = 0; i < $selected_activities.length; i++) {
+			polylines.push($selected_activities[i].dataset.summaryPolyline);
 		}
 		if (document.getElementById('order').value == 'forward') {
 			polylines.reverse();
 		}
 		drawMap(polylines,parseInt(document.getElementById('duration').value));
+	});
+
+	// shows and hides the order drop down and generate button if appropriate
+	$('#activities').on('click', 'input', function() {
+		const activities_selected = $("#activities input:checked").length;
+		if ( activities_selected > 1 ) {
+			$('#run_display_order').show();
+		} else {
+			$('#run_display_order').hide();
+		}
+		if ( activities_selected > 0 ) {
+			$( "#button_show_video" ).prop('disabled',false);
+		} else {
+			$( "#button_show_video" ).prop('disabled', true );
+		}
 	});
 
 	if (!Cookies.get('strava_access_token')) {
