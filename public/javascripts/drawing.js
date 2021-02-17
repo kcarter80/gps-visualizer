@@ -212,19 +212,23 @@ function getStravaActivities() {
 		},
 		success: function(data) {
 			$('#status_loading_strava_activities').append(' DONE.');
+			var dateOptions = { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' };
+			var timeOptions = {hour: '2-digit', minute: '2-digit', second: '2-digit'}
 			var activityDate, decodedPolyline;
 			for (var i = 0; i < data.length; i++) {
 				// only include runs
 				if (data[i].type == 'Run') {
 					// display the run in the list of activities
 					activityDate = new Date(data[i].start_date)
+					console.log(data[i]);
 					$('#activities').append(`
 						<div>
 							<input type="checkbox" id="activity_${data[i].id}" name="selected_activities" value="${data[i].id}" data-summary-polyline="${data[i].map.summary_polyline}">
 							<label for="activity_${data[i].id}">
-								${activityDate.toDateString()}
-								${activityDate.toTimeString()}
+								${activityDate.toLocaleDateString(undefined, dateOptions)}
+								${activityDate.toLocaleTimeString(undefined, timeOptions)}
 								${data[i].name}
+								${round(data[i].distance * 0.000621371,1)} mi
 							</label>									
 						</div>
 					`);
