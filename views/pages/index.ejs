@@ -8,7 +8,6 @@
 	<script src='/javascripts/polyline.js'></script>
 	<script>
 		var STRAVA_REDIRECT = '<%= process.env.STRAVA_REDIRECT %>';
-		var CLOUDCONVERT_PERSONAL_ACCESS_TOKEN = '<%= process.env.CLOUDCONVERT_PERSONAL_ACCESS_TOKEN %>';
 	</script>
 	<script src="javascripts/drawing.js"></script>
 </head>
@@ -21,17 +20,26 @@
 		</div>
 	</div>
 
+	<div id="step_1">
+		<span id="run_display_order">
+			Run display order:
+			<select name="order" id="order">
+				<option value="forward">Forward in time</option>
+				<option value="backward">Backward in time</option>
+			</select>
+		</span>
+		Animation duration:
+		<input type="text" id="duration" value="3">	
+		<input type="button" value="Generate Animation" id="button_generate_animation" disabled>
+	</div>
+	<div id="step_2">
+		Would you like to share this video? I have to pay a service to convert the video into a shareable format. Payment packages will be available soon, but for now I charge $1.00.
+		<input type="button" id="yes" value="Yes, Share Video" disabled>
+		<input type="button" id="no"  value="No, Start Over"   disabled>
+		<div id="video_link"></div>
+	</div>
+
 	<div id="map"></div>
-	<span id="run_display_order">
-		Run display order:
-		<select name="order" id="order">
-			<option value="forward">Forward in time</option>
-			<option value="backward">Backward in time</option>
-		</select>
-	</span>
-	Movie duration:
-	<input type="text" id="duration" value="3">	
-	<input type="button" value="Show Video" id="button_show_video" disabled>
-	<div id="video_link"></div>
+
 </body>
 </html>

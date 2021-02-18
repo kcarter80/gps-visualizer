@@ -3,15 +3,12 @@ body {
 }
 
 #map {
-	 width: 540px; height: 760px; display:none;
+	 width: 540px; height: 760px;
+	 margin-top: 1.5em;
 }
 
-#run_display_order {
+#run_display_order, #step_2, #map {
 	display: none;
-}
-
-#button_generate_map {
-
 }
 
 .grid-container {

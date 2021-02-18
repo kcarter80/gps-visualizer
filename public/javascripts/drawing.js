@@ -18,6 +18,7 @@ function drawMap(polylines,duration) {
 	var maxLng = -180;
 	var decodedPolyline;
 	var decodedPolylines = [];
+	// finds the bounding box for the map
 	for (var i = 0; i < polylines.length; i++) {
 		decodedPolyline = polyline.decode(polylines[i]);
 		decodedPolylines.push(decodedPolyline);
@@ -30,7 +31,6 @@ function drawMap(polylines,duration) {
 			decodedPolyline[ii].reverse(); // mapbox wants lng first
 		}
 	};
-	console.log(totalPoints,decodedPolylines);
 
 	$('#map').show();
 	mapboxgl.accessToken = 'pk.eyJ1Ijoia2NhcnRlcjgwIiwiYSI6ImNqb3lna3l4aTJqZHozcHBkb2t6aTlqMXcifQ.ejZI1oT4qSCXozOmgHLYsg';
@@ -50,7 +50,6 @@ function drawMap(polylines,duration) {
 	);
 
 	map.on('load', function() {
-		const d = document.getElementById('video_link');
 		const canvas = document.querySelector('.mapboxgl-canvas');
 		// Optional frames per second argument.
 		const stream = canvas.captureStream(20);
@@ -60,51 +59,17 @@ function drawMap(polylines,duration) {
 			chunks.push(e.data);
 		};
 		mr.onstop = (e) => {
+			$status.append('Creating video from animation.')
 			const blob = new Blob(chunks, {
 				type: "video/webm"
 			});
 			const url = URL.createObjectURL(blob);
-			d.innerHTML = `<a href="${url}" download="run_video.webm">Download Video</a>`;
-
-			$.ajax({
-				type: "GET",
-				url: '/create_upload_task',
-				success: function( data, textStatus, jqXHR ) {
-					console.log('Upload task created', data, textStatus, jqXHR);
-					
-					var fd = new FormData();					
-					for (const [key, value] of Object.entries(data.data.result.form.parameters)) {
-						fd.append(key,value);
-					}
-					// https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
-					// fd.append('fname', 'vid.webm');
-					fd.append('file', blob);
-					$.ajax({
-						type: "POST",
-						url: data.data.result.form.url,
-						data: fd,
-						// the following 2 attributes are needed to get the blob upload to work
-						processData: false,
-						contentType: false,
-						success: function( data, textStatus, jqXHR ) {
-							console.log('Blob uploaded', data, textStatus, jqXHR);
-							$.ajax({
-								type: "POST",
-								url: '/create_convert_and_export_job',
-								data: {
-									upload_task_id: data.getElementsByTagName('Key')[0].innerHTML.slice(0,-5),
-									input_format: 'webm',
-									output_format: 'mp4'
-								},
-								success: function( data, textStatus, jqXHR ) {
-									console.log('File conversion begun', data, textStatus, jqXHR);
-								}
-							});
-						}
-					})
-				}
-			});
+			$('#video_link').html(`<a href="${url}" download="run_video.webm">Download webm Video</a>`);
+			
+			// TODO: check other browsers
+			$status.append(' DONE.<br/><br/>Waiting for user to approve video ⬇️.');
 		};
+
 		for (var i = 0; i < decodedPolylines.length; i++) {
 			geoJsons[i] = {
 				'type': 'FeatureCollection',
@@ -157,6 +122,9 @@ function drawMap(polylines,duration) {
 				pointsToDraw = totalPoints - pointsDrawn;
 				$('#distance').html(10.23);
 				mr.stop();
+				$status.append(' DONE.<br/>');
+				$('#yes, #no').prop('disabled', false );
+				$('#step_2').show();
 			}
 			var lengthsSum = 0;
 			var i = 0;
@@ -199,10 +167,54 @@ function drawMap(polylines,duration) {
 	});
 }
 
+function convertVideo(blob) {
+	$status.append('Setting up upload to conversion service.')
+	$.ajax({
+		type: "GET",
+		url: '/create_upload_task',
+		success: function( data, textStatus, jqXHR ) {
+			//console.log('Upload task created', data, textStatus, jqXHR);
+			$status.append(' DONE.<br/>');
+			var fd = new FormData();					
+			for (const [key, value] of Object.entries(data.data.result.form.parameters)) {
+				fd.append(key,value);
+			}
+			// https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
+			// fd.append('fname', 'vid.webm'); // not neeeded not sure why
+			fd.append('file', blob);
+			
+			$status.append('Uploading video to conversion service.')
+			$.ajax({
+				type: "POST",
+				url: data.data.result.form.url,
+				data: fd,
+				// the following 2 attributes are needed to get the blob upload to work
+				processData: false,
+				contentType: false,
+				success: function( data, textStatus, jqXHR ) {
+					//console.log('Blob uploaded', data, textStatus, jqXHR);
+					$status.append(' DONE.<br/>Initiatinng conversion to shareable format.');
+					$.ajax({
+						type: "POST",
+						url: '/create_convert_and_export_job',
+						data: {
+							upload_task_id: data.getElementsByTagName('Key')[0].innerHTML.slice(0,-5),
+							input_format: 'webm',
+							output_format: 'mp4'
+						},
+						success: function( data, textStatus, jqXHR ) {
+							console.log('File conversion begun', data, textStatus, jqXHR);
+							$status.append(' DONE.<br/> Waiting for conversion to complete.');
+						}
+					});
+				}
+			})
+		}
+	})
+}
+
 function getStravaActivities() {
-	var $activities = $('#activities');
-	var $status = $('#status');
-	$status.append('<div id="status_loading_strava_activities">Loading Strava activities.</div>');
+	$status.append('Loading Strava activities.');
 	// requests the last N (TODO: look up how many) activities from Strava
 	$.ajax({
 		type: "GET",
@@ -211,17 +223,17 @@ function getStravaActivities() {
 			xhr.setRequestHeader ("Authorization", "Bearer " + Cookies.get('strava_access_token'));
 		},
 		success: function(data) {
-			$('#status_loading_strava_activities').append(' DONE.');
-			var dateOptions = { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' };
-			var timeOptions = {hour: '2-digit', minute: '2-digit', second: '2-digit'}
-			var activityDate, decodedPolyline;
+			$status.append(' DONE.<br/>');
+			const dateOptions = { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' };
+			const timeOptions = {hour: '2-digit', minute: '2-digit', second: '2-digit'}
+			let activityDate, decodedPolyline;
 			for (var i = 0; i < data.length; i++) {
 				// only include runs
 				if (data[i].type == 'Run') {
 					// display the run in the list of activities
 					activityDate = new Date(data[i].start_date)
-					console.log(data[i]);
-					$('#activities').append(`
+					//console.log(data[i]);
+					$activities.append(`
 						<div>
 							<input type="checkbox" id="activity_${data[i].id}" name="selected_activities" value="${data[i].id}" data-summary-polyline="${data[i].map.summary_polyline}">
 							<label for="activity_${data[i].id}">
@@ -233,14 +245,27 @@ function getStravaActivities() {
 						</div>
 					`);
 				}
-			}	
+			}
+			$status.append('<br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');	
 		}
 
 	});
 }
 
 $( document ).ready(function() {
-	$( "#button_show_video" ).click(function() {
+	// GLOBALS
+	$status = $('#status');
+	$activities = $('#activities');
+
+	// forces status to always be scrolled to bottom
+	$status.on('DOMSubtreeModified', function(){
+		$status.scrollTop($status[0].scrollHeight);
+	});
+
+	$( "#button_generate_animation" ).click(function() {
+		$('#step_1').hide();
+		$status.append(' DONE.<br/>Generating animation.');
+		// collates the selected activities into an array of polylines
 		var $selected_activities = $("input[type='checkbox'][name='selected_activities']:checked");
 		var polylines = [];
 		for (var i = 0; i < $selected_activities.length; i++) {
@@ -253,7 +278,7 @@ $( document ).ready(function() {
 	});
 
 	// shows and hides the order drop down and generate button if appropriate
-	$('#activities').on('click', 'input', function() {
+	$activities.on('click', 'input', function() {
 		const activities_selected = $("#activities input:checked").length;
 		if ( activities_selected > 1 ) {
 			$('#run_display_order').show();
@@ -261,10 +286,22 @@ $( document ).ready(function() {
 			$('#run_display_order').hide();
 		}
 		if ( activities_selected > 0 ) {
-			$( "#button_show_video" ).prop('disabled',false);
+			$( "#button_generate_animation" ).prop('disabled',false);
 		} else {
-			$( "#button_show_video" ).prop('disabled', true );
+			$( "#button_generate_animation" ).prop('disabled', true );
 		}
+	});
+
+	$( "#yes" ).click(function() {
+		alert( "Handler for yes called." );
+	});
+
+	$( "#no" ).click(function() {
+		$('#yes, #no').prop('disabled', true );
+		$('#step_2').hide();
+		$('#video_link, #map').empty();
+		$('#step_1').show();		
+		$status.append(' DONE.<br/><br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');
 	});
 
 	if (!Cookies.get('strava_access_token')) {
@@ -274,6 +311,7 @@ $( document ).ready(function() {
 			// TODO: Apps should check which scopes a user has accepted.
 			// TODO: Could be an edge case with cookie expiration timing.
 			// TODO: Refresh expired access tokens.
+			$status.append('Logging in to Strava.');
 			$.ajax({
 				type: "POST",
 				url: "https://www.strava.com/oauth/token",
@@ -284,11 +322,14 @@ $( document ).ready(function() {
 					grant_type: 'authorization_code'
 				},
 				success: function(data) {
+					$status.append(' DONE.');
 					Cookies.set('strava_access_token', data.access_token, { expires: data.expires_in / (60*60*24) })
 					getStravaActivities();
 				},
 				error: function() {
 					console.log('Something went wrong with authorization.');
+					// TODO: are there other edge cases?
+					window.location.replace("https://www.strava.com/oauth/authorize?client_id=30507&redirect_uri=http%3A%2F%2F" + STRAVA_REDIRECT +"&response_type=code&scope=read,read_all,activity:read,activity:read_all");
 				}
 			});
 		}
