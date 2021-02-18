@@ -1,3 +1,71 @@
+/*
+duration: length of animation in milliseconds
+animationStart: result of a performance.now() call (milliseconds since page load)
+pointsDrawn: number of points drawn so far
+totalPoints: total number of points to draw
+decodedPolylines: array of decoded polylines
+geoJsons: an array of mapbox objects that are needed for animating
+frameDelay: number of milliseconds between frames
+*/
+function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr, frameDelay) {
+	let frameStart = performance.now();
+	let elapsedTime = frameStart - animationStart;
+	let pointsToDraw;
+	// if this isn't the final frame
+	if (elapsedTime < duration) {
+		let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / duration);
+		//$('#distance').html((10.23 * elapsedTime / duration).toFixed(2));
+		pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
+	} else {
+		pointsToDraw = totalPoints - pointsDrawn;
+		//$('#distance').html(10.23);
+		mr.stop();
+		$status.append(' DONE.<br/>');
+		$('#yes, #no').prop('disabled', false );
+		$('#step_2').show();
+	}
+	let lengthsSum = 0;
+	let i = 0;
+	while (i < decodedPolylines.length && pointsToDraw > 0) {
+		// pointsDrawn - points drawn so far
+		// lengthsSum  - sum of lengths of segments looped through
+		// decodedPolylines[i].length - length of this segment
+		let alreadyDrawnPointsThisPolyline = pointsDrawn - lengthsSum;
+		if (alreadyDrawnPointsThisPolyline - decodedPolylines[i].length >= 0) {
+			// move on to next, increment lengths sum
+			lengthsSum += decodedPolylines[i].length;
+			i++;
+		// points drawn is missing at least some of this segment
+		} else {
+			if (decodedPolylines[i].length - alreadyDrawnPointsThisPolyline > pointsToDraw) {
+				// all the points can be drawn from this polyline
+				let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline,alreadyDrawnPointsThisPolyline + pointsToDraw);
+				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
+				map.getSource('route-' + i).setData(geoJsons[i]);
+				pointsDrawn += pointsToDraw;
+				pointsToDraw = 0;
+			} else {
+				// need to take everything left in this polyline
+				let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline);
+				// not specifying an end in slice gets the remainder
+				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
+				map.getSource('route-' + i).setData(geoJsons[i]);
+				pointsDrawn += decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
+				pointsToDraw -= decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
+				lengthsSum += decodedPolylines[i].length;
+				i++;
+			}
+		}
+	}
+	// need to keep going if we have not reached the end of the animation time
+	if (elapsedTime < duration) {
+		setTimeout(function() {
+			drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr)
+		}, frameDelay);
+	}
+}
+
+
 function drawMap(polylines,duration) {
 	// perceptually different colors generated here: http://vrl.cs.brown.edu/color
 	//const colors = ["#3c2d80", "#609111", "#de4a9f", "#048765", "#770c2e", "#308ac9", "#673d17", "#8e41d9", "#b27807", "#657bec"];
@@ -106,60 +174,8 @@ function drawMap(polylines,duration) {
 		const animationStart = performance.now();
 		const frameDelay = 100;
 		let pointsDrawn = 0;
-		let timerId = setTimeout(function draw() {
-			let frameStart = performance.now();
-			let elapsedTime = frameStart - animationStart;
-			let pointsToDraw;
-			// if this isn't the final frame
-			if (elapsedTime < duration) {
-				let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / duration);
-				//$('#distance').html((10.23 * elapsedTime / duration).toFixed(2));
-				pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
-			} else {
-				pointsToDraw = totalPoints - pointsDrawn;
-				//$('#distance').html(10.23);
-				mr.stop();
-				$status.append(' DONE.<br/>');
-				$('#yes, #no').prop('disabled', false );
-				$('#step_2').show();
-			}
-			let lengthsSum = 0;
-			let i = 0;
-			while (i < decodedPolylines.length && pointsToDraw > 0) {
-				// pointsDrawn - points drawn so far
-				// lengthsSum  - sum of lengths of segments looped through
-				// decodedPolylines[i].length - length of this segment
-				let alreadyDrawnPointsThisPolyline = pointsDrawn - lengthsSum;
-				if (alreadyDrawnPointsThisPolyline - decodedPolylines[i].length >= 0) {
-					// move on to next, increment lengths sum
-					lengthsSum += decodedPolylines[i].length;
-					i++;
-				// points drawn is missing at least some of this segment
-				} else {
-					if (decodedPolylines[i].length - alreadyDrawnPointsThisPolyline > pointsToDraw) {
-						// all the points can be drawn from this polyline
-						let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline,alreadyDrawnPointsThisPolyline + pointsToDraw);
-						geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
-						map.getSource('route-' + i).setData(geoJsons[i]);
-						pointsDrawn += pointsToDraw;
-						pointsToDraw = 0;
-					} else {
-						// need to take everything left in this polyline
-						let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline);
-						// not specifying an end in slice gets the remainder
-						geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
-						map.getSource('route-' + i).setData(geoJsons[i]);
-						pointsDrawn += decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
-						pointsToDraw -= decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
-						lengthsSum += decodedPolylines[i].length;
-						i++;
-					}
-				}
-			}
-			// need to keep going if we have not reached the end of the animation time
-			if (elapsedTime < duration) {
-				timerId = setTimeout(draw, frameDelay);
-			}
+		setTimeout(function() {
+			drawFrame(duration, animationStart, 0, totalPoints, decodedPolylines, geoJsons, map, mr, frameDelay)
 		}, frameDelay);
 	});
 }
