@@ -1,29 +1,32 @@
-// perceptually different colors generated here: http://vrl.cs.brown.edu/color
-//var colors = ["#3c2d80", "#609111", "#de4a9f", "#048765", "#770c2e", "#308ac9", "#673d17", "#8e41d9", "#b27807", "#657bec"];
-var colors = ["#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"];
-var map;
+
+
 
 function drawMap(polylines,duration) {
-	var geoJsons = [];
+	// perceptually different colors generated here: http://vrl.cs.brown.edu/color
+	//const colors = ["#3c2d80", "#609111", "#de4a9f", "#048765", "#770c2e", "#308ac9", "#673d17", "#8e41d9", "#b27807", "#657bec"];
+	const colors = ["#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"];
+	let map;
+	let geoJsons = [];
 	// total number of gps points to draw
-	var totalPoints = 0;
-	var animationStart, frameStart, lastFrameStart;
-	var animationDelay = 50;
-	var animationTime = duration * 1000;
-	var pointsDrawn = 0;
+	let totalPoints = 0;
+	let animationStart, frameStart, lastFrameStart;
+	const animationDelay = 500;
+	const frameDelay = 100;
+	const animationTime = duration * 1000;
+	let pointsDrawn = 0;
 	// the bounding box for the map
-	var minLat = 90;
-	var maxLat = -90;
-	var minLng = 180;
-	var maxLng = -180;
-	var decodedPolyline;
-	var decodedPolylines = [];
+	let minLat = 90;
+	let maxLat = -90;
+	let minLng = 180;
+	let maxLng = -180;
+	let decodedPolyline;
+	let decodedPolylines = [];
 	// finds the bounding box for the map
-	for (var i = 0; i < polylines.length; i++) {
+	for (let i = 0; i < polylines.length; i++) {
 		decodedPolyline = polyline.decode(polylines[i]);
 		decodedPolylines.push(decodedPolyline);
 		totalPoints += decodedPolyline.length;
-		for (var ii = 0; ii < decodedPolyline.length; ii++) {
+		for (let ii = 0; ii < decodedPolyline.length; ii++) {
 			if (decodedPolyline[ii][0] < minLat) minLat = decodedPolyline[ii][0];
 			if (decodedPolyline[ii][0] > maxLat) maxLat = decodedPolyline[ii][0];
 			if (decodedPolyline[ii][1] < minLng) minLng = decodedPolyline[ii][1];
@@ -37,7 +40,8 @@ function drawMap(polylines,duration) {
 	map = new mapboxgl.Map({
 		container: 'map',
 		style: 'mapbox://styles/mapbox/streets-v11',
-		interactive: false
+		interactive: false,
+		fadeDuration: 0
 	});
 	map.fitBounds([
 			[minLng,minLat],
@@ -52,10 +56,10 @@ function drawMap(polylines,duration) {
 
 	map.on('load', function() {
 		const canvas = document.querySelector('.mapboxgl-canvas');
-		// Optional frames per second argument.
-		const stream = canvas.captureStream(20);
-		var mr = new MediaRecorder(stream, { mimeType: 'video/webm' });
-		const chunks = [];
+		// Optional frames per second argument. If unset, captures everytime canvas changes.
+		const stream = canvas.captureStream();
+		let mr = new MediaRecorder(stream, { mimeType: 'video/webm' });
+		let chunks = [];
 		mr.ondataavailable = function(e) {
 			chunks.push(e.data);
 		};
@@ -72,7 +76,7 @@ function drawMap(polylines,duration) {
 			$status.append(' DONE.<br/><br/>Waiting for user to approve video ⬇️.');
 		};
 
-		for (var i = 0; i < decodedPolylines.length; i++) {
+		for (let i = 0; i < decodedPolylines.length; i++) {
 			geoJsons[i] = {
 				'type': 'FeatureCollection',
 				'features': [
@@ -104,20 +108,19 @@ function drawMap(polylines,duration) {
 					'line-width': 4
 				}
 			});
-			var k = 0;
 		}
 
 		mr.start();
 		animationStart = frameStart = performance.now();
 		
-		var timerId = setTimeout(function draw() {
+		let timerId = setTimeout(function draw() {
 			lastFrameStart = frameStart;
 			frameStart = performance.now();
-			var elapsedTime = frameStart - animationStart;
-			var pointsToDraw;
+			let elapsedTime = frameStart - animationStart;
+			let pointsToDraw;
 			// if this isn't the final frame
 			if (elapsedTime < animationTime) {
-				var pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / animationTime);
+				let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / animationTime);
 				$('#distance').html((10.23 * elapsedTime / animationTime).toFixed(2));
 				pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
 			} else {
@@ -128,13 +131,13 @@ function drawMap(polylines,duration) {
 				$('#yes, #no').prop('disabled', false );
 				$('#step_2').show();
 			}
-			var lengthsSum = 0;
-			var i = 0;
+			let lengthsSum = 0;
+			let i = 0;
 			while (i < decodedPolylines.length && pointsToDraw > 0) {
 				// pointsDrawn - points drawn so far
 				// lengthsSum  - sum of lengths of segments looped through
 				// decodedPolylines[i].length - length of this segment
-				var alreadyDrawnPointsThisPolyline = pointsDrawn - lengthsSum;
+				let alreadyDrawnPointsThisPolyline = pointsDrawn - lengthsSum;
 				if (alreadyDrawnPointsThisPolyline - decodedPolylines[i].length >= 0) {
 					// move on to next, increment lengths sum
 					lengthsSum += decodedPolylines[i].length;
@@ -143,14 +146,14 @@ function drawMap(polylines,duration) {
 				} else {
 					if (decodedPolylines[i].length - alreadyDrawnPointsThisPolyline > pointsToDraw) {
 						// all the points can be drawn from this polyline
-						var theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline,alreadyDrawnPointsThisPolyline + pointsToDraw);
+						let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline,alreadyDrawnPointsThisPolyline + pointsToDraw);
 						geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
 						map.getSource('route-' + i).setData(geoJsons[i]);
 						pointsDrawn += pointsToDraw;
 						pointsToDraw = 0;
 					} else {
 						// need to take everything left in this polyline
-						var theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline);
+						let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline);
 						// not specifying an end in slice gets the remainder
 						geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
 						map.getSource('route-' + i).setData(geoJsons[i]);
@@ -161,11 +164,11 @@ function drawMap(polylines,duration) {
 					}								
 				}
 			}
-			// need to keep going
+			// need to keep going if we have not reached the end of the animation time
 			if (elapsedTime < animationTime) {
-				timerId = setTimeout(draw, animationDelay);
+				timerId = setTimeout(draw, frameDelay);
 			}
-		}, animationDelay);				
+		}, frameDelay);				
 	});
 }
 
@@ -177,7 +180,7 @@ function convertVideo(blob) {
 		success: function( data, textStatus, jqXHR ) {
 			//console.log('Upload task created', data, textStatus, jqXHR);
 			$status.append(' DONE.<br/>');
-			var fd = new FormData();					
+			let fd = new FormData();					
 			for (const [key, value] of Object.entries(data.data.result.form.parameters)) {
 				fd.append(key,value);
 			}
@@ -257,7 +260,7 @@ function getStravaActivities() {
 			const dateOptions = { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' };
 			const timeOptions = {hour: '2-digit', minute: '2-digit', second: '2-digit'}
 			let activityDate, decodedPolyline;
-			for (var i = 0; i < data.length; i++) {
+			for (let i = 0; i < data.length; i++) {
 				// only include runs
 				//if (data[i].type == 'Run') {
 					// display the run in the list of activities
@@ -296,9 +299,9 @@ $( document ).ready(function() {
 		$('#step_1').hide();
 		$status.append(' DONE.<br/>Generating animation.');
 		// collates the selected activities into an array of polylines
-		var $selected_activities = $("input[type='checkbox'][name='selected_activities']:checked");
-		var polylines = [];
-		for (var i = 0; i < $selected_activities.length; i++) {
+		const $selected_activities = $("input[type='checkbox'][name='selected_activities']:checked");
+		let polylines = [];
+		for (let i = 0; i < $selected_activities.length; i++) {
 			polylines.push($selected_activities[i].dataset.summaryPolyline);
 		}
 		if (document.getElementById('order').value == 'forward') {

@@ -63,7 +63,6 @@ express()
 				}
 			}
 		})
-		console.log(job_data)
 
 		const create_convert_options = {
 			hostname: 'api.cloudconvert.com',
@@ -94,13 +93,11 @@ express()
 		cloudconvert_req.end()
 	})
 	.post('/create_convert_task', function (req, res) {
-		console.log(req.body)
 		const data = JSON.stringify({
 			input: req.body.input,
 			input_format: req.body.input_format,
 			output_format: req.body.output_format
 		})
-		console.log(data)
 
 		const create_convert_options = {
 			hostname: 'api.cloudconvert.com',
