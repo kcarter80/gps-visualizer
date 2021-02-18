@@ -1,20 +1,11 @@
-function drawFrame() {
-	
-}
-
 function drawMap(polylines,duration) {
 	// perceptually different colors generated here: http://vrl.cs.brown.edu/color
 	//const colors = ["#3c2d80", "#609111", "#de4a9f", "#048765", "#770c2e", "#308ac9", "#673d17", "#8e41d9", "#b27807", "#657bec"];
 	const colors = ["#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"];
 	let map;
 	let geoJsons = [];
-	// total number of gps points to draw
+	// total number of gps points to draw (set by decoded polylines sum)
 	let totalPoints = 0;
-	let animationStart, frameStart, lastFrameStart;
-	const animationDelay = 500;
-	const frameDelay = 100;
-	const animationTime = duration * 1000;
-	let pointsDrawn = 0;
 	// the bounding box for the map
 	let minLat = 90;
 	let maxLat = -90;
@@ -112,17 +103,17 @@ function drawMap(polylines,duration) {
 		}
 
 		mr.start();
-		animationStart = frameStart = performance.now();
-		
+		const animationStart = performance.now();
+		const frameDelay = 100;
+		let pointsDrawn = 0;
 		let timerId = setTimeout(function draw() {
-			lastFrameStart = frameStart;
-			frameStart = performance.now();
+			let frameStart = performance.now();
 			let elapsedTime = frameStart - animationStart;
 			let pointsToDraw;
 			// if this isn't the final frame
-			if (elapsedTime < animationTime) {
-				let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / animationTime);
-				//$('#distance').html((10.23 * elapsedTime / animationTime).toFixed(2));
+			if (elapsedTime < duration) {
+				let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / duration);
+				//$('#distance').html((10.23 * elapsedTime / duration).toFixed(2));
 				pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
 			} else {
 				pointsToDraw = totalPoints - pointsDrawn;
@@ -162,14 +153,14 @@ function drawMap(polylines,duration) {
 						pointsToDraw -= decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
 						lengthsSum += decodedPolylines[i].length;
 						i++;
-					}								
+					}
 				}
 			}
 			// need to keep going if we have not reached the end of the animation time
-			if (elapsedTime < animationTime) {
+			if (elapsedTime < duration) {
 				timerId = setTimeout(draw, frameDelay);
 			}
-		}, frameDelay);				
+		}, frameDelay);
 	});
 }
 
@@ -308,7 +299,7 @@ $( document ).ready(function() {
 		if (document.getElementById('order').value == 'forward') {
 			polylines.reverse();
 		}
-		drawMap(polylines,parseInt(document.getElementById('duration').value));
+		drawMap(polylines,parseInt(document.getElementById('duration').value) * 1000);
 	});
 
 	// shows and hides the order drop down and generate button if appropriate
