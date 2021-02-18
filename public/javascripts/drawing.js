@@ -36,7 +36,8 @@ function drawMap(polylines,duration) {
 	mapboxgl.accessToken = 'pk.eyJ1Ijoia2NhcnRlcjgwIiwiYSI6ImNqb3lna3l4aTJqZHozcHBkb2t6aTlqMXcifQ.ejZI1oT4qSCXozOmgHLYsg';
 	map = new mapboxgl.Map({
 		container: 'map',
-		style: 'mapbox://styles/mapbox/streets-v11'
+		style: 'mapbox://styles/mapbox/streets-v11',
+		interactive: false
 	});
 	map.fitBounds([
 			[minLng,minLat],
@@ -60,11 +61,12 @@ function drawMap(polylines,duration) {
 		};
 		mr.onstop = (e) => {
 			$status.append('Creating video from animation.')
-			const blob = new Blob(chunks, {
+			// TODO: de-global
+			blob = new Blob(chunks, {
 				type: "video/webm"
 			});
 			const url = URL.createObjectURL(blob);
-			$('#video_link').html(`<a href="${url}" download="run_video.webm">Download webm Video</a>`);
+			$('#webm_link').html(`<a href="${url}" download="run_video.webm">Download webm video</a>`);
 			
 			// TODO: check other browsers
 			$status.append(' DONE.<br/><br/>Waiting for user to approve video ⬇️.');
@@ -202,9 +204,37 @@ function convertVideo(blob) {
 							input_format: 'webm',
 							output_format: 'mp4'
 						},
-						success: function( data, textStatus, jqXHR ) {
+						success: async function( data, textStatus, jqXHR ) {
 							console.log('File conversion begun', data, textStatus, jqXHR);
 							$status.append(' DONE.<br/> Waiting for conversion to complete.');
+							let complete = false;
+							while (!complete) {
+								// https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
+								await new Promise(r => setTimeout(r, 5000));
+								$.ajax({
+									type: "GET",
+									url: '/check_job_status',
+									data: {
+										job_id: data.data.id
+									},
+									success: function( data, textStatus, jqXHR ) {
+										console.log('Chceked status', data, textStatus, jqXHR);
+										if (data.data.status == 'finished') {
+											complete = true;
+											$('#mp4_link').html(`<a href="${data.data.tasks.find(task => task.name == 'export_the_file').result.files[0].url}" download="run_video.webm">Download mp4 video</a>`);
+											$('#step_3').show();
+										} else {
+											$status.append('.')
+										}
+									},
+									error: function() {
+										// TODO: better error handling
+										complete = true;
+									},
+									async: false
+								});
+							}
+							$status.append(' DONE.<br/>');
 						}
 					});
 				}
@@ -293,13 +323,15 @@ $( document ).ready(function() {
 	});
 
 	$( "#yes" ).click(function() {
-		alert( "Handler for yes called." );
+		$('#step_2').hide();
+		$status.append(' DONE.<br/>')
+		convertVideo(blob);
 	});
 
 	$( "#no" ).click(function() {
 		$('#yes, #no').prop('disabled', true );
 		$('#step_2').hide();
-		$('#video_link, #map').empty();
+		$('#webm_link, #map').empty();
 		$('#step_1').show();		
 		$status.append(' DONE.<br/><br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');
 	});
