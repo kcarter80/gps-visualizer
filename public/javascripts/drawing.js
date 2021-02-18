@@ -1,5 +1,6 @@
-
-
+function drawFrame() {
+	
+}
 
 function drawMap(polylines,duration) {
 	// perceptually different colors generated here: http://vrl.cs.brown.edu/color
@@ -121,11 +122,11 @@ function drawMap(polylines,duration) {
 			// if this isn't the final frame
 			if (elapsedTime < animationTime) {
 				let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / animationTime);
-				$('#distance').html((10.23 * elapsedTime / animationTime).toFixed(2));
+				//$('#distance').html((10.23 * elapsedTime / animationTime).toFixed(2));
 				pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
 			} else {
 				pointsToDraw = totalPoints - pointsDrawn;
-				$('#distance').html(10.23);
+				//$('#distance').html(10.23);
 				mr.stop();
 				$status.append(' DONE.<br/>');
 				$('#yes, #no').prop('disabled', false );
