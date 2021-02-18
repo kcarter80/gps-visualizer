@@ -259,7 +259,7 @@ function getStravaActivities() {
 			let activityDate, decodedPolyline;
 			for (var i = 0; i < data.length; i++) {
 				// only include runs
-				if (data[i].type == 'Run') {
+				//if (data[i].type == 'Run') {
 					// display the run in the list of activities
 					activityDate = new Date(data[i].start_date)
 					//console.log(data[i]);
@@ -274,7 +274,7 @@ function getStravaActivities() {
 							</label>									
 						</div>
 					`);
-				}
+				//}
 			}
 			$status.append('<br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');	
 		}
@@ -323,7 +323,8 @@ $( document ).ready(function() {
 	});
 
 	$( "#yes" ).click(function() {
-		$('#step_2').hide();
+		$('#step_2, #map').hide();
+		$('#map').empty();
 		$status.append(' DONE.<br/>')
 		convertVideo(blob);
 	});
