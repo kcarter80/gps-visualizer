@@ -48,29 +48,6 @@ express()
 		cloudconvert_req.end()
 	})
 	.post('/create_convert_and_export_job', function (req, res) {
-/*
-{
-  "tasks": {
-    "import-my-file": {
-      "operation": "import/s3"
-    },
-    "convert-my-file": {
-      "operation": "convert",
-      "input": "import-my-file",
-      "input_format": "docx",
-      "output_format": "pdf",
-      "page_range": "1-2",
-      "optimize_print": true
-    },
-    "export-my-file": {
-      "operation": "export/s3",
-      "input": "convert-my-file"
-    }
-  },
-  "tag": "myjob-123"
-}
-*/
-
 		const job_data = JSON.stringify({
 			tasks: {
 				convert_the_file: {

@@ -304,9 +304,12 @@ $( document ).ready(function() {
 		$status.append(' DONE.<br/><br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');
 	});
 
+	// if the user does not have a cookied strava access token, have to go get one
 	if (!Cookies.get('strava_access_token')) {
+		// no cookie and no code in the url. send them away to strava to login.
 		if (!getUrlParameter("code")) {
 			window.location.replace("https://www.strava.com/oauth/authorize?client_id=30507&redirect_uri=http%3A%2F%2F" + STRAVA_REDIRECT +"&response_type=code&scope=read,read_all,activity:read,activity:read_all");
+		// if this has just come from a redirect from strava, the user will have a code in the url, but no cookie
 		} else {
 			// TODO: Apps should check which scopes a user has accepted.
 			// TODO: Could be an edge case with cookie expiration timing.
@@ -322,7 +325,7 @@ $( document ).ready(function() {
 					grant_type: 'authorization_code'
 				},
 				success: function(data) {
-					$status.append(' DONE.');
+					$status.append(' DONE.<br/>');
 					Cookies.set('strava_access_token', data.access_token, { expires: data.expires_in / (60*60*24) })
 					getStravaActivities();
 				},
