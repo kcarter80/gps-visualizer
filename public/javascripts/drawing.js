@@ -7,7 +7,7 @@ decodedPolylines: array of decoded polylines
 geoJsons: an array of mapbox objects that are needed for animating
 frameDelay: number of milliseconds between frames
 */
-function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr, frameDelay) {
+async function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr, frameDelay) {
 	let frameStart = performance.now();
 	let elapsedTime = frameStart - animationStart;
 	let pointsToDraw;
@@ -16,13 +16,10 @@ function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPo
 		let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / duration);
 		//$('#distance').html((10.23 * elapsedTime / duration).toFixed(2));
 		pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
+	// this is the final frame
 	} else {
 		pointsToDraw = totalPoints - pointsDrawn;
 		//$('#distance').html(10.23);
-		mr.stop();
-		$status.append(' DONE.<br/>');
-		$('#yes, #no').prop('disabled', false );
-		$('#step_2').show();
 	}
 	let lengthsSum = 0;
 	let i = 0;
@@ -47,7 +44,6 @@ function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPo
 			} else {
 				// need to take everything left in this polyline
 				let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline);
-				// not specifying an end in slice gets the remainder
 				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
 				map.getSource('route-' + i).setData(geoJsons[i]);
 				pointsDrawn += decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
@@ -62,6 +58,16 @@ function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPo
 		setTimeout(function() {
 			drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr)
 		}, frameDelay);
+	} else {
+		console.log(performance.now());
+		await new Promise(r => setTimeout(r, 2000));
+		console.log(performance.now());
+		mr.stop();
+		$status.append(' DONE.<br/>');
+		$('#map').hide();
+		$('#map').empty();
+		$('#yes, #no').prop('disabled', false );
+		$('#step_2').show();
 	}
 }
 
@@ -114,7 +120,10 @@ function drawMap(polylines,duration) {
 		}
 	);
 
-	map.on('load', function() {
+	map.on('load', async function() {
+		// wait until the map settles TODO: needed?
+		//await untilMapEvent('idle');
+
 		const canvas = document.querySelector('.mapboxgl-canvas');
 		// Optional frames per second argument. If unset, captures everytime canvas changes.
 		const stream = canvas.captureStream();
@@ -131,7 +140,8 @@ function drawMap(polylines,duration) {
 			});
 			const url = URL.createObjectURL(blob);
 			$('#webm_link').html(`<a href="${url}" download="run_video.webm">Download webm video</a>`);
-			
+			$('#webm_video').prop('src',url);
+
 			// TODO: check other browsers
 			$status.append(' DONE.<br/><br/>Waiting for user to approve video ⬇️.');
 		};
@@ -171,6 +181,7 @@ function drawMap(polylines,duration) {
 		}
 
 		mr.start();
+		await new Promise(r => setTimeout(r, 2000));
 		const animationStart = performance.now();
 		const frameDelay = 100;
 		let pointsDrawn = 0;
@@ -216,7 +227,7 @@ function convertVideo(blob) {
 							output_format: 'mp4'
 						},
 						success: async function( data, textStatus, jqXHR ) {
-							console.log('File conversion begun', data, textStatus, jqXHR);
+							// console.log('File conversion begun', data, textStatus, jqXHR);
 							$status.append(' DONE.<br/> Waiting for conversion to complete.');
 							let complete = false;
 							while (!complete) {
@@ -315,7 +326,7 @@ $( document ).ready(function() {
 		if (document.getElementById('order').value == 'forward') {
 			polylines.reverse();
 		}
-		drawMap(polylines,parseInt(document.getElementById('duration').value) * 1000);
+		drawMap(polylines,parseInt(document.getElementById('duration').value) * 1000 - 2000);
 	});
 
 	// shows and hides the order drop down and generate button if appropriate
@@ -334,8 +345,7 @@ $( document ).ready(function() {
 	});
 
 	$( "#yes" ).click(function() {
-		$('#step_2, #map').hide();
-		$('#map').empty();
+		$('#step_2').hide();
 		$status.append(' DONE.<br/>')
 		convertVideo(blob);
 	});

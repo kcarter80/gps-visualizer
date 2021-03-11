@@ -14,6 +14,7 @@
 
 <body>
 	<div class="grid-container">
+		<div>Status</div><div>Strava Activities</div>
 		<div id="status" class="frame">
 		</div>
 		<div id="activities" class="frame">
@@ -29,7 +30,7 @@
 			</select>
 		</span>
 		Animation duration:
-		<input type="text" id="duration" value="3">	
+		<input type="text" id="duration" value="5">	
 		<input type="button" value="Generate Animation" id="button_generate_animation" disabled>
 	</div>
 	<div id="step_2">
@@ -37,6 +38,7 @@
 		<input type="button" id="yes" value="Yes, Share Video" disabled>
 		<input type="button" id="no"  value="No, Start Over"   disabled>
 		<div id="webm_link"></div>
+		<video id="webm_video" width="270" height="270" controls></video>
 	</div>
 	<div id="step_3">
 		Download your video here and share on Instagram, TikTok, Snapchat, or wherever you like! Please refresh the page to start over.
