@@ -3,11 +3,16 @@ body {
 }
 
 #map {
-	 width: 1080px; height: 1080px;
-	 margin-top: 1.5em;
+	visibility: hidden;
+	width: 1080px; height: 1080px;
+	margin-top: 1.5em;
 }
 
-#run_display_order, #step_2, #step_3, #map {
+#video_video {
+	display: block;
+}
+
+#run_display_order, #step_2, #map {
 	display: none;
 }
 

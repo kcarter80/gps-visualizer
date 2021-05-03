@@ -19,3 +19,8 @@ function round(value, precision) {
     var multiplier = Math.pow(10, precision || 0);
     return Math.round(value * multiplier) / multiplier;
 }
+
+function status(status) {
+	// TODO: is there a better way to do this?
+	$('#status').append(status);
+}

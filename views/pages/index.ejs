@@ -1,51 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<%- include ("../partials/header.ejs") %>
-	<script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
-	<script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
-	<link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
-	<script src='/javascripts/polyline.js'></script>
-	<script>
-		var STRAVA_REDIRECT = '<%= process.env.STRAVA_REDIRECT %>';
-	</script>
-	<script src="javascripts/drawing.js"></script>
+    <%- include ("../partials/header.ejs") %>
+    <script>
+        var STRAVA_REDIRECT = '<%= process.env.STRAVA_REDIRECT %>';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@rc/dist/js.cookie.min.js"></script>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='/javascripts/polyline.js'></script>
+    <script type="module">
+        import {ready} from "/javascripts/ready.js";
+        import {handlers} from "/javascripts/handlers.js";
+        $( document ).ready(async function() {
+            // TODO: await these later/elsewhere?
+            handlers();
+            ready();
+        });
+    </script>
 </head>
 
 <body>
-	<div class="grid-container">
-		<div>Status</div><div>Strava Activities</div>
-		<div id="status" class="frame">
-		</div>
-		<div id="activities" class="frame">
-		</div>
-	</div>
+    <div class="grid-container">
+        <div>Status</div><div>Strava Activities</div>
+        <div id="status" class="frame">
+        </div>
+        <div id="activities" class="frame">
+        </div>
+    </div>
 
-	<div id="step_1">
-		<span id="run_display_order">
-			Run display order:
-			<select name="order" id="order">
-				<option value="forward">Forward in time</option>
-				<option value="backward">Backward in time</option>
-			</select>
-		</span>
-		Animation duration:
-		<input type="text" id="duration" value="5">	
-		<input type="button" value="Generate Animation" id="button_generate_animation" disabled>
-	</div>
-	<div id="step_2">
-		Would you like to share this video? I have to pay a service to convert the video into a shareable format. Payment packages will be available soon, but for now I charge $1.00.
-		<input type="button" id="yes" value="Yes, Share Video" disabled>
-		<input type="button" id="no"  value="No, Start Over"   disabled>
-		<div id="webm_link"></div>
-		<video id="webm_video" width="270" height="270" controls></video>
-	</div>
-	<div id="step_3">
-		Download your video here and share on Instagram, TikTok, Snapchat, or wherever you like! Please refresh the page to start over.
-		<div id="mp4_link"></div>
-	</div>
-
-	<div id="map"></div>
-
+    <div id="step_1">
+        <span id="run_display_order">
+            Run display order:
+            <select name="order" id="order">
+                <option value="forward">Forward in time</option>
+                <option value="backward">Backward in time</option>
+            </select>
+        </span>
+        Animation duration:
+        <input type="text" id="duration" value="15"> 
+        <input type="button" value="Generate Animation" id="button_generate_animation" disabled>
+    </div>
+    <div id="step_2">
+        <span id="video_link"></span>
+        <input type="button" id="restart" value="Restart">
+        <video id="video_video" width="540" height="540" controls></video>
+    </div>
+    <div id="map"></div>
 </body>
 </html>

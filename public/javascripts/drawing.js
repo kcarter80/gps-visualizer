@@ -1,78 +1,7 @@
-/*
-duration: length of animation in milliseconds
-animationStart: result of a performance.now() call (milliseconds since page load)
-pointsDrawn: number of points drawn so far
-totalPoints: total number of points to draw
-decodedPolylines: array of decoded polylines
-geoJsons: an array of mapbox objects that are needed for animating
-frameDelay: number of milliseconds between frames
-*/
-async function drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr, frameDelay) {
-	let frameStart = performance.now();
-	let elapsedTime = frameStart - animationStart;
-	let pointsToDraw;
-	// if this isn't the final frame
-	if (elapsedTime < duration) {
-		let pointsThatShouldBeDrawnByNow = Math.floor(totalPoints * elapsedTime / duration);
-		//$('#distance').html((10.23 * elapsedTime / duration).toFixed(2));
-		pointsToDraw = pointsThatShouldBeDrawnByNow - pointsDrawn;
-	// this is the final frame
-	} else {
-		pointsToDraw = totalPoints - pointsDrawn;
-		//$('#distance').html(10.23);
-	}
-	let lengthsSum = 0;
-	let i = 0;
-	while (i < decodedPolylines.length && pointsToDraw > 0) {
-		// pointsDrawn - points drawn so far
-		// lengthsSum  - sum of lengths of segments looped through
-		// decodedPolylines[i].length - length of this segment
-		let alreadyDrawnPointsThisPolyline = pointsDrawn - lengthsSum;
-		if (alreadyDrawnPointsThisPolyline - decodedPolylines[i].length >= 0) {
-			// move on to next, increment lengths sum
-			lengthsSum += decodedPolylines[i].length;
-			i++;
-		// points drawn is missing at least some of this segment
-		} else {
-			if (decodedPolylines[i].length - alreadyDrawnPointsThisPolyline > pointsToDraw) {
-				// all the points can be drawn from this polyline
-				let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline,alreadyDrawnPointsThisPolyline + pointsToDraw);
-				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
-				map.getSource('route-' + i).setData(geoJsons[i]);
-				pointsDrawn += pointsToDraw;
-				pointsToDraw = 0;
-			} else {
-				// need to take everything left in this polyline
-				let theSlice = decodedPolylines[i].slice(alreadyDrawnPointsThisPolyline);
-				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
-				map.getSource('route-' + i).setData(geoJsons[i]);
-				pointsDrawn += decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
-				pointsToDraw -= decodedPolylines[i].length - alreadyDrawnPointsThisPolyline;
-				lengthsSum += decodedPolylines[i].length;
-				i++;
-			}
-		}
-	}
-	// need to keep going if we have not reached the end of the animation time
-	if (elapsedTime < duration) {
-		setTimeout(function() {
-			drawFrame(duration, animationStart, pointsDrawn, totalPoints, decodedPolylines, geoJsons, map, mr)
-		}, frameDelay);
-	} else {
-		console.log(performance.now());
-		await new Promise(r => setTimeout(r, 2000));
-		console.log(performance.now());
-		mr.stop();
-		$status.append(' DONE.<br/>');
-		$('#map').hide();
-		$('#map').empty();
-		$('#yes, #no').prop('disabled', false );
-		$('#step_2').show();
-	}
-}
+import loadEncoder from 'https://unpkg.com/mp4-h264@1.0.7/build/mp4-encoder.js'; // WebAssembly mp4 encoder
+import {simd} from "https://unpkg.com/wasm-feature-detect?module";
 
-
-function drawMap(polylines,duration) {
+export async function drawMap(polylines,duration,fps) {
 	// perceptually different colors generated here: http://vrl.cs.brown.edu/color
 	//const colors = ["#3c2d80", "#609111", "#de4a9f", "#048765", "#770c2e", "#308ac9", "#673d17", "#8e41d9", "#b27807", "#657bec"];
 	const colors = ["#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"];
@@ -109,6 +38,20 @@ function drawMap(polylines,duration) {
 		interactive: false,
 		fadeDuration: 0
 	});
+	/*
+	map.on('render', function() {
+		console.log('render occured');
+	});
+	map.on('idle', function() {
+		console.log('idle occured');
+	});
+	map.on('load', function() {
+		console.log('load occured');
+	});
+	map.on('moveend', function() {
+		console.log('moveend occured');
+	});
+	*/
 	map.fitBounds([
 			[minLng,minLat],
 			[maxLng,maxLat]
@@ -120,277 +63,185 @@ function drawMap(polylines,duration) {
 		}
 	);
 
-	map.on('load', async function() {
-		// wait until the map settles TODO: needed?
-		//await untilMapEvent('idle');
+	// same as: map.on('load', async function() {
+	await new Promise(resolve => map.on('load', resolve));
 
-		const canvas = document.querySelector('.mapboxgl-canvas');
-		// Optional frames per second argument. If unset, captures everytime canvas changes.
-		const stream = canvas.captureStream();
-		let mr = new MediaRecorder(stream, { mimeType: 'video/webm' });
-		let chunks = [];
-		mr.ondataavailable = function(e) {
-			chunks.push(e.data);
-		};
-		mr.onstop = (e) => {
-			$status.append('Creating video from animation.')
-			// TODO: de-global
-			blob = new Blob(chunks, {
-				type: "video/webm"
-			});
-			const url = URL.createObjectURL(blob);
-			$('#webm_link').html(`<a href="${url}" download="run_video.webm">Download webm video</a>`);
-			$('#webm_video').prop('src',url);
-
-			// TODO: check other browsers
-			$status.append(' DONE.<br/><br/>Waiting for user to approve video ⬇️.');
+	for (let i = 0; i < decodedPolylines.length; i++) {
+		geoJsons[i] = {
+			'type': 'FeatureCollection',
+			'features': [
+			{
+				'type': 'Feature',
+				'geometry': {
+					'type': 'LineString',
+					'coordinates': []
+				}
+			}
+			]
 		};
 
-		for (let i = 0; i < decodedPolylines.length; i++) {
-			geoJsons[i] = {
-				'type': 'FeatureCollection',
-				'features': [
-				{
-					'type': 'Feature',
-					'geometry': {
-						'type': 'LineString',
-						'coordinates': []
-					}
-				}
-				]
-			};
-
-			map.addSource('route-' + i, {
-				type: 'geojson',
-				data: geoJsons[i]
-			});
-			map.addLayer({
-				'id': 'route-animation-' + i,
-				'type': 'line',
-				'source': 'route-' + i,
-				'layout': {
-					'line-join': 'round',
-					'line-cap': 'round'
-				},
-				'paint': {
-					'line-opacity': 0.3,
-					'line-color': colors[i],
-					'line-width': 4
-				}
-			});
-		}
-
-		mr.start();
-		await new Promise(r => setTimeout(r, 2000));
-		const animationStart = performance.now();
-		const frameDelay = 100;
-		let pointsDrawn = 0;
-		setTimeout(function() {
-			drawFrame(duration, animationStart, 0, totalPoints, decodedPolylines, geoJsons, map, mr, frameDelay)
-		}, frameDelay);
-	});
-}
-
-function convertVideo(blob) {
-	$status.append('Setting up upload to conversion service.')
-	$.ajax({
-		type: "GET",
-		url: '/create_upload_task',
-		success: function( data, textStatus, jqXHR ) {
-			//console.log('Upload task created', data, textStatus, jqXHR);
-			$status.append(' DONE.<br/>');
-			let fd = new FormData();					
-			for (const [key, value] of Object.entries(data.data.result.form.parameters)) {
-				fd.append(key,value);
+		map.addSource('route-' + i, {
+			type: 'geojson',
+			data: geoJsons[i]
+		});
+		map.addLayer({
+			'id': 'route-animation-' + i,
+			'type': 'line',
+			'source': 'route-' + i,
+			'layout': {
+				'line-join': 'round',
+				'line-cap': 'round'
+			},
+			'paint': {
+				'line-opacity': 0.3,
+				'line-color': colors[i],
+				'line-width': 4
 			}
-			// https://stackoverflow.com/questions/13333378/how-can-javascript-upload-a-blob
-			// fd.append('fname', 'vid.webm'); // not neeeded not sure why
-			fd.append('file', blob);
-			
-			$status.append('Uploading video to conversion service.')
-			$.ajax({
-				type: "POST",
-				url: data.data.result.form.url,
-				data: fd,
-				// the following 2 attributes are needed to get the blob upload to work
-				processData: false,
-				contentType: false,
-				success: function( data, textStatus, jqXHR ) {
-					//console.log('Blob uploaded', data, textStatus, jqXHR);
-					$status.append(' DONE.<br/>Initiatinng conversion to shareable format.');
-					$.ajax({
-						type: "POST",
-						url: '/create_convert_and_export_job',
-						data: {
-							upload_task_id: data.getElementsByTagName('Key')[0].innerHTML.slice(0,-5),
-							input_format: 'webm',
-							output_format: 'mp4'
-						},
-						success: async function( data, textStatus, jqXHR ) {
-							// console.log('File conversion begun', data, textStatus, jqXHR);
-							$status.append(' DONE.<br/> Waiting for conversion to complete.');
-							let complete = false;
-							while (!complete) {
-								// https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
-								await new Promise(r => setTimeout(r, 5000));
-								$.ajax({
-									type: "GET",
-									url: '/check_job_status',
-									data: {
-										job_id: data.data.id
-									},
-									success: function( data, textStatus, jqXHR ) {
-										console.log('Chceked status', data, textStatus, jqXHR);
-										if (data.data.status == 'finished') {
-											complete = true;
-											$('#mp4_link').html(`<a href="${data.data.tasks.find(task => task.name == 'export_the_file').result.files[0].url}" download="run_video.webm">Download mp4 video</a>`);
-											$('#step_3').show();
-										} else {
-											$status.append('.')
-										}
-									},
-									error: function() {
-										// TODO: better error handling
-										complete = true;
-									},
-									async: false
-								});
-							}
-							$status.append(' DONE.<br/>');
-						}
-					});
-				}
-			})
-		}
-	})
-}
-
-function getStravaActivities() {
-	$status.append('Loading Strava activities.');
-	// requests the last N (TODO: look up how many) activities from Strava
-	$.ajax({
-		type: "GET",
-		url: "https://www.strava.com/api/v3/activities?per_page=30",
-		beforeSend: function (xhr) {
-			xhr.setRequestHeader ("Authorization", "Bearer " + Cookies.get('strava_access_token'));
-		},
-		success: function(data) {
-			$status.append(' DONE.<br/>');
-			const dateOptions = { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' };
-			const timeOptions = {hour: '2-digit', minute: '2-digit', second: '2-digit'}
-			let activityDate, decodedPolyline;
-			for (let i = 0; i < data.length; i++) {
-				// only include runs
-				//if (data[i].type == 'Run') {
-					// display the run in the list of activities
-					activityDate = new Date(data[i].start_date)
-					//console.log(data[i]);
-					$activities.append(`
-						<div>
-							<input type="checkbox" id="activity_${data[i].id}" name="selected_activities" value="${data[i].id}" data-summary-polyline="${data[i].map.summary_polyline}">
-							<label for="activity_${data[i].id}">
-								${activityDate.toLocaleDateString(undefined, dateOptions)}
-								${activityDate.toLocaleTimeString(undefined, timeOptions)}
-								${data[i].name}
-								${round(data[i].distance * 0.000621371,1)} mi
-							</label>									
-						</div>
-					`);
-				//}
-			}
-			$status.append('<br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');	
-		}
-
-	});
-}
-
-$( document ).ready(function() {
-	// GLOBALS
-	$status = $('#status');
-	$activities = $('#activities');
-
-	// forces status to always be scrolled to bottom
-	$status.on('DOMSubtreeModified', function(){
-		$status.scrollTop($status[0].scrollHeight);
-	});
-
-	$( "#button_generate_animation" ).click(function() {
-		$('#step_1').hide();
-		$status.append(' DONE.<br/>Generating animation.');
-		// collates the selected activities into an array of polylines
-		const $selected_activities = $("input[type='checkbox'][name='selected_activities']:checked");
-		let polylines = [];
-		for (let i = 0; i < $selected_activities.length; i++) {
-			polylines.push($selected_activities[i].dataset.summaryPolyline);
-		}
-		if (document.getElementById('order').value == 'forward') {
-			polylines.reverse();
-		}
-		drawMap(polylines,parseInt(document.getElementById('duration').value) * 1000 - 2000);
-	});
-
-	// shows and hides the order drop down and generate button if appropriate
-	$activities.on('click', 'input', function() {
-		const activities_selected = $("#activities input:checked").length;
-		if ( activities_selected > 1 ) {
-			$('#run_display_order').show();
-		} else {
-			$('#run_display_order').hide();
-		}
-		if ( activities_selected > 0 ) {
-			$( "#button_generate_animation" ).prop('disabled',false);
-		} else {
-			$( "#button_generate_animation" ).prop('disabled', true );
-		}
-	});
-
-	$( "#yes" ).click(function() {
-		$('#step_2').hide();
-		$status.append(' DONE.<br/>')
-		convertVideo(blob);
-	});
-
-	$( "#no" ).click(function() {
-		$('#yes, #no').prop('disabled', true );
-		$('#step_2').hide();
-		$('#webm_link, #map').empty();
-		$('#step_1').show();		
-		$status.append(' DONE.<br/><br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');
-	});
-
-	// if the user does not have a cookied strava access token, have to go get one
-	if (!Cookies.get('strava_access_token')) {
-		// no cookie and no code in the url. send them away to strava to login.
-		if (!getUrlParameter("code")) {
-			window.location.replace("https://www.strava.com/oauth/authorize?client_id=30507&redirect_uri=http%3A%2F%2F" + STRAVA_REDIRECT +"&response_type=code&scope=read,read_all,activity:read,activity:read_all");
-		// if this has just come from a redirect from strava, the user will have a code in the url, but no cookie
-		} else {
-			// TODO: Apps should check which scopes a user has accepted.
-			// TODO: Could be an edge case with cookie expiration timing.
-			// TODO: Refresh expired access tokens.
-			$status.append('Logging in to Strava.');
-			$.ajax({
-				type: "POST",
-				url: "https://www.strava.com/oauth/token",
-				data: {
-					client_id: '30507',
-					client_secret: 'd9b48d5c6dd9130562f4023e421a60f0c3ba836e',
-					code: getUrlParameter("code"),
-					grant_type: 'authorization_code'
-				},
-				success: function(data) {
-					$status.append(' DONE.<br/>');
-					Cookies.set('strava_access_token', data.access_token, { expires: data.expires_in / (60*60*24) })
-					getStravaActivities();
-				},
-				error: function() {
-					console.log('Something went wrong with authorization.');
-					// TODO: are there other edge cases?
-					window.location.replace("https://www.strava.com/oauth/authorize?client_id=30507&redirect_uri=http%3A%2F%2F" + STRAVA_REDIRECT +"&response_type=code&scope=read,read_all,activity:read,activity:read_all");
-				}
-			});
-		}
-	} else {
-		getStravaActivities();
+		});
 	}
-});
+
+	await new Promise(resolve => map.on('idle', resolve));
+
+	// initialize H264 video encoder
+	const Encoder = await loadEncoder();
+	const gl = map.painter.context.gl; // graphics library
+	const width = gl.drawingBufferWidth;
+	const height = gl.drawingBufferHeight;
+	const encoder = Encoder.create({
+		width,
+		height,
+		fps: fps,
+		kbps: 64000,
+		rgbFlipY: true
+	});		
+
+	let pointsDrawn = 0;
+	const totalFrames = (duration - 2000) * fps / 1000;
+	const ptr = encoder.getRGBPointer(); // keep a pointer to encoder WebAssembly heap memory
+
+	// reads the pixels from the canvas and places them into the encoder
+	function encodeFrame() {
+		//console.log('encoding frame')
+		// get a view into encoder memory TODO: understand why this is needed
+		const pixels = encoder.memory().subarray(ptr);
+		// read pixels into encoder
+		gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+		//console.log(pixels);
+		encoder.encodeRGBPointer(); // encode the frame
+	}
+
+	async function animate() {
+		for(let i = 1; i <= totalFrames; i++) {
+			if (i % 30 == 0) status('.');
+			// drawFrame awaits the render event from mapbox
+
+			await drawFrame(totalFrames, i, totalPoints, decodedPolylines, geoJsons, map);
+			encodeFrame();
+		}
+	}
+
+	/* I HAVE NO IDEA WHY I NEED THIS */
+	// but if i don't include it the first frames are black
+	// do all the animations you need to record here
+	map.easeTo({
+		bearing: map.getBearing(),
+		duration: 1,
+		easing: t => t
+	});
+	await new Promise(resolve => map.on('moveend', resolve));
+	/* /I HAVE NO IDEA WHY I NEED THIS */
+
+	// create a one second buffer at the beginning of the video	
+	for(let i = 1; i <= fps; i++) {
+		encodeFrame();
+	}
+
+	await animate(); // run all the animations
+
+	for(let i = 1; i <= fps; i++) {
+		encodeFrame();
+	}
+
+	// download the encoded video file
+	const mp4 = encoder.end();
+	
+	//const anchor = document.createElement("a");
+	const blob = new Blob([mp4], {type: "video/mp4"})
+	//anchor.href =  URL.createObjectURL(blob);
+	//anchor.download = "mapbox-gl";
+	//anchor.click();
+
+
+	const url = URL.createObjectURL(blob);
+	$('#video_link').html(`<a href="${url}" download="run_video.mp4">Download video</a>`);
+	$('#video_video').prop('src',url);
+	$('#step_2').show();
+	// TODO: check other browsers
+	status(' DONE.<br/><br/>User may now down video or restart ⬇️.');
+}
+/*
+totalFrames: the total number of frames in this animation
+thisFrameNumber: the number of this frame
+pointsDrawn: how many points have been drawn so far
+*/
+async function drawFrame(totalFrames, thisFrameNumber, totalPoints, decodedPolylines, geoJsons, map) {
+	// no points have been drawn yet on the 0 or 1 frame
+	let pointsDrawn;
+	if (thisFrameNumber <= 1) {
+		pointsDrawn = 0;
+	} else {
+		pointsDrawn = Math.floor(totalPoints * (thisFrameNumber - 1)/totalFrames);
+	}
+
+	// figure out how many points to draw this frame
+	let pointsToDraw;
+	if (thisFrameNumber == totalFrames) {
+		pointsToDraw = totalPoints - pointsDrawn;
+	} else {
+		const pointsThatWillBeDrawnByNow = Math.floor(totalPoints * thisFrameNumber/totalFrames)
+		pointsToDraw = pointsThatWillBeDrawnByNow - pointsDrawn;
+	}
+
+	//console.log(pointsDrawn, pointsToDraw);
+	// don't need to do anything in this case
+	if (pointsToDraw == 0) return;
+
+	let lengthsSum = 0; // sum of the lengths of polylines already drawn
+	let i = 0;          // polyline index
+	let leftoverPoints; // the points leftover after previous polylines accounted for
+	let theSlice;       // the polyline points on this iteration to add to the geoJsons
+	while (i < decodedPolylines.length && pointsToDraw > 0) {
+		leftoverPoints = pointsDrawn - lengthsSum;
+		// this means this polyline has already been fully drawn
+		if (leftoverPoints - decodedPolylines[i].length >= 0) {
+			// move on to next, increment lengths sum
+			lengthsSum += decodedPolylines[i].length;
+			i++;
+		// we're missing at least some (and maybe all) of this segment
+		} else {
+			if (decodedPolylines[i].length - leftoverPoints > pointsToDraw) {
+				// all the remaining points to draw can be drawn from this polyline without using all of the polyline
+				theSlice = decodedPolylines[i].slice(leftoverPoints,leftoverPoints + pointsToDraw);
+				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
+				map.getSource('route-' + i).setData(geoJsons[i]);
+				pointsDrawn += pointsToDraw;
+				pointsToDraw = 0;
+			} else {
+				// can use everything in this polyline (and perhaps some of the next, which we'll check on next loop)
+				theSlice = decodedPolylines[i].slice(leftoverPoints);
+				geoJsons[i].features[0].geometry.coordinates.push(...theSlice);
+				map.getSource('route-' + i).setData(geoJsons[i]);
+				pointsDrawn += decodedPolylines[i].length - leftoverPoints;
+				pointsToDraw -= decodedPolylines[i].length - leftoverPoints;
+				lengthsSum += decodedPolylines[i].length;
+				i++;
+			}
+		}
+	}
+	// important: do not return until render is complete and map reports idle
+	await new Promise(resolve => map.once('idle', resolve));
+}
+
+function timeout(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
