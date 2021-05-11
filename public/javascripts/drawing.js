@@ -1,4 +1,4 @@
-import loadEncoder from 'https://unpkg.com/mp4-h264@1.0.7/build/mp4-encoder.js'; // WebAssembly mp4 encoder
+import loadEncoder from 'https://unpkg.com/mp4-h264@1.0.8/build/mp4-encoder.js'; // WebAssembly mp4 encoder
 import {simd} from "https://unpkg.com/wasm-feature-detect?module";
 
 export async function drawMap(polylines,duration,fps) {
@@ -59,13 +59,12 @@ export async function drawMap(polylines,duration,fps) {
 		// the padding makes the map a little less cut close at the edges
 		{
 			duration: 0,
-			padding: 20
+			padding: 40
 		}
 	);
 
 	// same as: map.on('load', async function() {
 	await new Promise(resolve => map.on('load', resolve));
-
 	for (let i = 0; i < decodedPolylines.length; i++) {
 		geoJsons[i] = {
 			'type': 'FeatureCollection',
@@ -101,48 +100,59 @@ export async function drawMap(polylines,duration,fps) {
 	}
 
 	await new Promise(resolve => map.on('idle', resolve));
-
+	progress(5);
 	// initialize H264 video encoder
 	const Encoder = await loadEncoder();
 	const gl = map.painter.context.gl; // graphics library
 	const width = gl.drawingBufferWidth;
 	const height = gl.drawingBufferHeight;
+	// instantiates in < 5 ms
 	const encoder = Encoder.create({
 		width,
 		height,
 		fps: fps,
-		kbps: 64000,
+		
+		//kbps: 0,
+		//quantizationParameter: 50,
 		rgbFlipY: true
-	});		
+	});
+	progress(10);
 
 	let pointsDrawn = 0;
 	const totalFrames = (duration - 2000) * fps / 1000;
-	const ptr = encoder.getRGBPointer(); // keep a pointer to encoder WebAssembly heap memory
+	const ptr = encoder.getRGBPointer(); // keep a pointer to encoder in WebAssembly heap memory
 
 	// reads the pixels from the canvas and places them into the encoder
+	let viewTime = 0; let readTime = 0; let encodeTime = 0;
+	let start;
 	function encodeFrame() {
-		//console.log('encoding frame')
+		start = performance.now();
 		// get a view into encoder memory TODO: understand why this is needed
 		const pixels = encoder.memory().subarray(ptr);
+		viewTime += performance.now() - start;
+
 		// read pixels into encoder
+		start = performance.now();
 		gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-		//console.log(pixels);
-		encoder.encodeRGBPointer(); // encode the frame
+		readTime += performance.now() - start;
+
+		// encode the frame
+		start = performance.now();
+		encoder.encodeRGBPointer();
+		encodeTime += performance.now() - start;
 	}
 
 	async function animate() {
 		for(let i = 1; i <= totalFrames; i++) {
-			if (i % 30 == 0) status('.');
 			// drawFrame awaits the render event from mapbox
-
 			await drawFrame(totalFrames, i, totalPoints, decodedPolylines, geoJsons, map);
 			encodeFrame();
+			if (i % 5 == 0) progress( 10 + Math.ceil(90 * i / totalFrames) );
 		}
 	}
 
 	/* I HAVE NO IDEA WHY I NEED THIS */
 	// but if i don't include it the first frames are black
-	// do all the animations you need to record here
 	map.easeTo({
 		bearing: map.getBearing(),
 		duration: 1,
@@ -156,7 +166,11 @@ export async function drawMap(polylines,duration,fps) {
 		encodeFrame();
 	}
 
+	//const start = performance.now();
 	await animate(); // run all the animations
+	//console.log(performance.getEntriesByType('measure'));
+	console.log('viewTime, readTime, encodeTime',viewTime, readTime, encodeTime);
+	//console.log('Runtime:',performance.now()-start);
 
 	for(let i = 1; i <= fps; i++) {
 		encodeFrame();
@@ -164,7 +178,7 @@ export async function drawMap(polylines,duration,fps) {
 
 	// download the encoded video file
 	const mp4 = encoder.end();
-	
+
 	//const anchor = document.createElement("a");
 	const blob = new Blob([mp4], {type: "video/mp4"})
 	//anchor.href =  URL.createObjectURL(blob);
@@ -177,7 +191,7 @@ export async function drawMap(polylines,duration,fps) {
 	$('#video_video').prop('src',url);
 	$('#step_2').show();
 	// TODO: check other browsers
-	status(' DONE.<br/><br/>User may now down video or restart ⬇️.');
+	status('✅<br/><br/>Please download video or restart ⬇️.');
 }
 /*
 totalFrames: the total number of frames in this animation

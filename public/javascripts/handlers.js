@@ -13,8 +13,9 @@ export function handlers() {
 	// CLICK HANDLERS //
 	$( "#button_generate_animation" ).click(async function() {
 		$('#step_1').hide();
-		status(' DONE.<br/>Generating animation.');
-
+		status(' ✅<br/>Generating animation. ');
+		// animation progress
+		progress(0);
 		// collates the selected activities into an array of polylines
 		const $selected_activities = $("input[type='checkbox'][name='selected_activities']:checked");
 		let polylines = [];
@@ -47,7 +48,7 @@ export function handlers() {
 		$('#step_2').hide();
 		$('#video_link, #map').empty();
 		$('#step_1').show();		
-		status(' DONE.<br/><br/>Waiting for user to select activities ➡️ and to generate animation ⬇️.');
+		status(' ✅<br/><br/>Please select activities and generate animation. ⬇️');
 	});
 	// END CLICK HANDLERS
 };

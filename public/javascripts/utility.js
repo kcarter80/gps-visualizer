@@ -24,3 +24,13 @@ function status(status) {
 	// TODO: is there a better way to do this?
 	$('#status').append(status);
 }
+
+function progress(percentage) {
+	if (percentage == null || percentage == 0) {
+		$('#status').append(`<progress id="progress" value="${percentage}" max="100"></progress>`)
+	} else if (percentage < 100) {
+		$('#progress').val(percentage);
+	} else {
+		$('#progress').remove();
+	}
+}

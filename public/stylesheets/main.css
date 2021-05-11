@@ -1,5 +1,20 @@
-body {
+body, input, select {
 	font-family: "Lucida Console", "Courier New", monospace;
+	font-size: 20px;
+}
+
+input[type=checkbox] {
+	width: 17px;
+	height: 17px;
+	margin-right: 0;
+}
+
+.bottom-bump {
+	margin-bottom: 25px;
+}
+
+#progress {
+	width: 100%;
 }
 
 #map {
@@ -26,8 +41,9 @@ body {
 #status, #activities {
 	overflow-y: auto;
 	border: 1px solid black;
+	padding: 5px;
 	height: 7em;
-    line-height: 1em;
+	line-height: 1em;
 }
 
 /* from: https://codepen.io/stevenlewis/pen/hubpL */
@@ -36,11 +52,11 @@ body {
 }
 
 .frame::-webkit-scrollbar:vertical {
-	width: 11px;
+	width: 20px;
 }
 
 .frame::-webkit-scrollbar:horizontal {
-	height: 11px;
+	height: 20px;
 }
 
 .frame::-webkit-scrollbar-thumb {

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, width=device-width, user-scalable=no" />
     <%- include ("../partials/header.ejs") %>
     <script>
         var STRAVA_REDIRECT = '<%= process.env.STRAVA_REDIRECT %>';
@@ -21,15 +22,13 @@
 </head>
 
 <body>
-    <div class="grid-container">
-        <div>Status</div><div>Strava Activities</div>
-        <div id="status" class="frame">
-        </div>
-        <div id="activities" class="frame">
-        </div>
-    </div>
 
-    <div id="step_1">
+    <div class="header">Status</div>
+    <div id="status" class="frame bottom-bump"></div>
+    <div class="header">Strava Activities</div>
+    <div id="activities" class="frame bottom-bump"></div>
+       
+    <div id="step_1" class="bottom-bump">
         <span id="run_display_order">
             Run display order:
             <select name="order" id="order">
@@ -38,10 +37,10 @@
             </select>
         </span>
         Animation duration:
-        <input type="text" id="duration" value="15"> 
+        <input type="text" id="duration" value="3"> 
         <input type="button" value="Generate Animation" id="button_generate_animation" disabled>
     </div>
-    <div id="step_2">
+    <div id="step_2" class="bottom-bump">
         <span id="video_link"></span>
         <input type="button" id="restart" value="Restart">
         <video id="video_video" width="540" height="540" controls></video>
