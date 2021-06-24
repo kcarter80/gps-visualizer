@@ -18,7 +18,7 @@ input[type=checkbox] {
 }
 
 #map {
-	visibility: hidden;
+
 	width: 1080px; height: 1080px;
 	margin-top: 1.5em;
 }
