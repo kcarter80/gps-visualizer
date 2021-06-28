@@ -3,8 +3,8 @@ import {simd} from "https://unpkg.com/wasm-feature-detect?module";
 
 export async function drawMap(polylines,duration,fps) {
 	// perceptually different colors generated here: http://vrl.cs.brown.edu/color
-	//const colors = ["#3c2d80", "#609111", "#de4a9f", "#048765", "#770c2e", "#308ac9", "#673d17", "#8e41d9", "#b27807", "#657bec"];
-	const colors = ["#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"];
+	const colors = ["#3c2d80", "#609111", "#de4a9f", "#308ac9", "#770c2e", "#048765", "#673d17", "#8e41d9", "#b27807", "#657bec"];
+	//const colors = ["#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000", "#ff0000"];
 	let map;
 	let geoJsons = [];
 	// total number of gps points to draw (set by decoded polylines sum)
@@ -211,7 +211,7 @@ export async function drawMap(polylines,duration,fps) {
 				'line-cap': 'round'
 			},
 			'paint': {
-				'line-opacity': 0.5,
+				'line-opacity': 0.7,
 				'line-color': colors[i],
 				'line-width': 6
 			}
